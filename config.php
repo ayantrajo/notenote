@@ -1,39 +1,25 @@
-<?php
-// Database connection
-$servername = "localhost"; 
-$username = "root"; // Change if you set a MySQL username
-$password = "";    // Change if you set a password
-$dbname = "noteit_db";
+<?php 
+// Database connection configuration 
+Shost = getenv('DB_HOST')?: 'localhost'; 
+$dbname getenv('DB_NAME') : 'default'; 
+$username getenv('DB_USER') ?: 'mysql'; 
+$password = getenv('DB_PASS') ?: ''; 
+$port getenv('DB_PORT') 3306;
 
-$conn = new mysqli($servername, $username, $password, $dbname);
+// Create database connection 
+try {
+// Use TCP/IP connection instead of socket 11
+Sconn new PDO("mysql:host=$host; dbname=$dbname; port=$port", $username, $password, [
+PDO::ATTR ERRMODE => PDO::ERRMODE_EXCEPTION,
+PDO::ATTR_EMULATE_PREPARES => false
 
-// Check connection
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+]);
+
+} catch (PDOException $e) {
+
+echo json_encode(['error' => 'Connection failed:' . $e->getMessage()]);
+
+die();
+
 }
-
-$title = $_POST['title'] ?? '';
-$content = $_POST['content'] ?? '';
-
-if (empty($title) || empty($content)) {
-    echo "error: title or content missing";
-    exit;
-}
-
-// Default values
-$status = "active";
-$user_id = 1;
-
-$sql = "INSERT INTO notes (title, content, status, user_id) VALUES (?, ?, ?, ?)";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("sssi", $title, $content, $status, $user_id);
-
-if ($stmt->execute()) {
-    echo "success";
-} else {
-    echo "error: " . $conn->error;
-}
-
-$stmt->close();
-$conn->close();
 ?>

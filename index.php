@@ -11,8 +11,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $title = $_POST['title'] ?? '';
         $content = $_POST['content'] ?? '';
         if ($title && $content) {
-            $stmt = $conn->prepare("INSERT INTO notes (title, content, status, date_created, user_id) VALUES (?, ?, 'normal', NOW(), ?)");
-            $stmt->execute([$title, $content, $user_id]);
+           $stmt = $conn->prepare("INSERT INTO notes (title, content, status, date_created, user_id) VALUES (?, ?, 'active', NOW(), ?)");
+          $stmt->execute([$title, $content, $user_id]);
         }
     }
     // Edit note

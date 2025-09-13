@@ -1,7 +1,4 @@
 <?php
-// ✅ Show all PHP errors (important for debugging white screen issues)
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 
 require_once 'config.php';
 $user_id = 1; // Default user for now
@@ -13,28 +10,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $title = $_POST['title'] ?? '';
         $content = $_POST['content'] ?? '';
         if ($title && $content) {
-            // ✅ Make sure "status" is a valid ENUM value in your table
             $stmt = $conn->prepare("INSERT INTO notes (title, content, status, date_created, user_id) VALUES (?, ?, 'normal', NOW(), ?)");
-            try {
-                $stmt->execute([$title, $content, $user_id]);
-            } catch (PDOException $e) {
-                // ✅ Show exact SQL error if something fails
-                die("Insert failed: " . $e->getMessage());
-            }
+            $stmt->execute([$title, $content, $user_id]);
         }
     }
-
     // Edit note
-    if (isset($_POST['action']) && $_POST['action'] === 'edit') {
-        $id = $_POST['id'] ?? '';
-        $title = $_POST['title'] ?? '';
-        $content = $_POST['content'] ?? '';
-        if ($id && $title && $content) {
-            $stmt = $conn->prepare("UPDATE notes SET title = ?, content = ? WHERE id = ? AND user_id = ?");
-            $stmt->execute([$title, $content, $id, $user_id]);
-        }
-    }
-
+      if (isset($_POST['action']) && $_POST['action'] === 'edit') {
+          $id = $_POST['id'] ?? '';
+          $title = $_POST['title'] ?? '';
+          $content = $_POST['content'] ?? '';
+          
+          if ($id && $title && $content) {
+              $stmt = $conn->prepare("UPDATE notes SET title = ?, content = ? WHERE id = ? AND user_id = ?");
+              $stmt->execute([$title, $content, $id, $user_id]);
+          }
+      }
     // Set as favorite
     if (isset($_POST['action']) && $_POST['action'] === 'favorite') {
         $id = $_POST['id'] ?? '';
@@ -43,7 +33,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$id, $user_id]);
         }
     }
-
     // Archive
     if (isset($_POST['action']) && $_POST['action'] === 'archive') {
         $id = $_POST['id'] ?? '';
@@ -52,7 +41,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$id, $user_id]);
         }
     }
-
     // Delete
     if (isset($_POST['action']) && $_POST['action'] === 'delete') {
         $id = $_POST['id'] ?? '';
@@ -61,7 +49,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$id, $user_id]);
         }
     }
-
     // Redirect to prevent form resubmission
     header("Location: index.php" . (isset($_GET['filter']) ? "?filter=" . $_GET['filter'] : ""));
     exit;
@@ -96,302 +83,212 @@ $notes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NoteIt_Admin</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <meta name="theme-color" content="#06b399">
-    
-    <style>
-        /* === General Styles === */
-        body.admin-body {
-            font-family: 'Poppins', sans-serif;
-            background-color: #f4f6f8;
-            margin: 0;
-            display: flex;
-            min-height: 100vh;
-        }
-
-        .container {
-            display: flex;
-            width: 100%;
-        }
-
-        /* === Sidebar === */
-        .sidebar {
-            width: 240px;
-            background-color: #fff;
-            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-        }
-
-        .logo {
-            font-size: 1.6rem;
-            font-weight: 700;
-            color: #06b399;
-            margin-bottom: 30px;
-        }
-
-        .logo span.exclamation {
-            color: #ff5722;
-        }
-
-        .nav-admin {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .nav-item {
-            display: block;
-            padding: 10px 15px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 500;
-            color: #444;
-            transition: background 0.2s ease, color 0.2s ease;
-        }
-
-        .nav-item:hover,
-        .nav-item.active {
-            background: #06b399;
-            color: white;
-        }
-
-        .user-info {
-            margin-top: auto;
-            padding: 10px;
-            background-color: #f9f9f9;
-            border-radius: 8px;
-            text-align: center;
-        }
-
-        .user-avatar {
-            width: 50px;
-            height: 50px;
-            background: #ccc;
-            border-radius: 50%;
-            margin: 10px auto 0;
-        }
-
-        /* === Main Content === */
-        .main-content {
-            flex: 1;
-            padding: 25px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .headerA {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .title {
-            font-size: 1.6rem;
-            font-weight: 600;
-        }
-
-        .search-container {
-            display: flex;
-            gap: 10px;
-        }
-
-        .search-input {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            outline: none;
-            width: 200px;
-        }
-
-        .add-note-btn {
-            background-color: #06b399;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: background 0.3s ease;
-        }
-
-        .add-note-btn:hover {
-            background-color: #049b84;
-        }
-
-        /* === Notes Grid === */
-        .note-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0px 3px 8px rgba(0, 0, 0, 0.05);
-            padding: 15px;
-            margin-bottom: 15px;
-            transition: transform 0.2s ease;
-        }
-
-        .note-card:hover {
-            transform: scale(1.01);
-        }
-
-        .note-title {
-            font-weight: 600;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .note-content {
-            margin-top: 10px;
-            color: #555;
-            font-size: 0.95rem;
-        }
-
-        .note-footer {
-            margin-top: 15px;
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.85rem;
-            color: #888;
-        }
-
-        .status-badge {
-            padding: 3px 8px;
-            border-radius: 6px;
-            font-weight: 500;
-            font-size: 0.75rem;
-        }
-
-        .status-badge.favorite {
-            background: #e0f7f4;
-            color: #06b399;
-        }
-
-        .status-badge.archived {
-            background: #fff4e0;
-            color: #ff9800;
-        }
-
-        /* === Dropdown Menu === */
-        .dropdown {
-            position: relative;
-            display: inline-block;
-        }
-
-        .dots-btn {
-            background: none;
-            border: none;
-            font-size: 1.2rem;
-            cursor: pointer;
-        }
-
-        .dropdown-content {
-            display: none;
-            position: absolute;
-            right: 0;
-            top: 25px;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-            min-width: 160px;
-            z-index: 10;
-        }
-
-        .dropdown:hover .dropdown-content {
-            display: block;
-        }
-
-        .dropdown-btn {
-            display: block;
-            width: 100%;
-            text-align: left;
-            background: none;
-            border: none;
-            padding: 10px;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-
-        .dropdown-btn:hover {
-            background: #f2f2f2;
-        }
-
-        /* === Modal Styles === */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 100;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.4);
-        }
-
-        .modal-content {
-            background: white;
-            margin: 10% auto;
-            padding: 20px;
-            border-radius: 12px;
-            width: 400px;
-            max-width: 90%;
-        }
-
-        .close-modal {
-            float: right;
-            font-size: 1.4rem;
-            cursor: pointer;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        input[type="text"],
-        textarea {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 0.95rem;
-        }
-
-        textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
-
-        .btn-save {
-            background: #06b399;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
-            width: 100%;
-        }
-
-        .btn-save:hover {
-            background: #049b84;
-        }
-
-        /* === Empty Notes Placeholder === */
-        .no-notes {
-            text-align: center;
-            margin-top: 30px;
-            color: #888;
-            font-style: italic;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body class="admin-body">
-    <!-- rest of your HTML stays the same -->
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">Note<span>It</span><span class="exclamation">!</span></div>
+            <div class="nav-admin">
+                <a href="index.php" class="nav-item <?php echo $filter === 'all' ? 'active' : ''; ?>">
+                    <span class="solar--notes-broken"></span>
+                    All Notes
+                </a>
+                <a href="index.php?filter=favorite" class="nav-item <?php echo $filter === 'favorite' ? 'active' : ''; ?>">
+                    <span class="material-symbols--favorite-outline"></span>
+                    Favorites
+                </a>
+                <a href="index.php?filter=archived" class="nav-item <?php echo $filter === 'archived' ? 'active' : ''; ?>">
+                    <span class="vaadin--archives"></span>
+                    Archives
+                </a>
+                <a href="login.html" class="nav-item">
+                    <span class="hugeicons--logout-04"></span>
+                    Logout
+                </a>
+            </div>
+            <div class="user-info">
+                <div class="user-text">
+                    <p>Hi Jhonard!<br><span>Welcome back.</span></p>
+                </div>
+            </div>
+            <div class="user-avatar"></div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="headerA">
+                <div class="title" id="sectionTitle" style="color: <?php echo $title_color; ?>"><?php echo $section_title; ?></div>
+                <div class="search-container">
+                     <input type="text" class="search-input" placeholder="Search">
+                    <button id="addNoteBtn" class="add-note-btn">+ Add Note</button>
+                </div>
+            </div>
+
+          <?php foreach ($notes as $note): ?>
+            <div class="note-card">
+              <div class="note-title">
+                <?php echo htmlspecialchars($note['title']); ?>
+                <div class="dropdown">
+                  <button class="dots-btn">⋮</button>
+                  <div class="dropdown-content">
+                    <form method="POST" action="index.php<?php echo $filter !== 'all' ? '?filter=' . $filter : ''; ?>">
+                      <input type="hidden" name="action" value="favorite">
+                      <input type="hidden" name="id" value="<?php echo $note['id']; ?>">
+                      <button type="submit" class="dropdown-btn">
+                        <span class="menu-icon">★</span> Add to Favorites
+                      </button>
+                    </form>
+                    
+                    <form method="POST" action="index.php<?php echo $filter !== 'all' ? '?filter=' . $filter : ''; ?>">
+                      <input type="hidden" name="action" value="archive">
+                      <input type="hidden" name="id" value="<?php echo $note['id']; ?>">
+                      <button type="submit" class="dropdown-btn">
+                        <span class="menu-icon">🗄️</span> Archive Note
+                      </button>
+                    </form>
+                    
+                    <button class="dropdown-btn edit-btn" data-id="<?php echo $note['id']; ?>" 
+                            data-title="<?php echo htmlspecialchars($note['title']); ?>" 
+                            data-content="<?php echo htmlspecialchars($note['content']); ?>">
+                      <span class="menu-icon">✏️</span> Edit Note
+                    </button>
+                    
+                    <form method="POST" action="index.php<?php echo $filter !== 'all' ? '?filter=' . $filter : ''; ?>" onsubmit="return confirm('Are you sure you want to delete this note?')">
+                      <input type="hidden" name="action" value="delete">
+                      <input type="hidden" name="id" value="<?php echo $note['id']; ?>">
+                      <button type="submit" class="dropdown-btn delete-btn">
+                        <span class="menu-icon">🗑️</span> Delete Note
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+              <div class="note-content">
+                <p><?php echo nl2br(htmlspecialchars($note['content'])); ?></p>
+              </div>
+              <div class="note-footer">
+                <?php if ($note['status'] === 'Favorite'): ?>
+                  <span class="status-badge favorite">★ Favorite</span>
+                <?php elseif ($note['status'] === 'Archived'): ?>
+                  <span class="status-badge archived">🗄️ Archived</span>
+                <?php endif; ?>
+                <div class="note-date"><?php echo date('M d, Y', strtotime($note['date_created'])); ?></div>
+              </div>
+            </div>
+            <?php endforeach; ?>
+                
+                <?php if (empty($notes)): ?>
+                <div class="no-notes">
+                    <p>No notes found. Create your first note!</p>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+          <!-- Add this right before closing </body> tag -->
+<div id="noteModal" class="modal">
+  <div class="modal-content">
+    <span class="close-modal">&times;</span>
+    <h2>Add Note</h2>
+    <form method="POST" action="index.php<?php echo $filter !== 'all' ? '?filter=' . $filter : ''; ?>">
+      <input type="hidden" name="action" value="add">
+      <div class="form-group">
+        <label for="title">Title</label>
+        <input type="text" name="title" id="title" placeholder="Note Title" required>
+      </div>
+      <div class="form-group">
+        <label for="content">Content</label>
+        <textarea name="content" id="content" placeholder="Note Content" required></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn-save">Save Note</button>
+      </div>
+    </form>
+  </div>
+</div>        
+  
+<!-- Add this right before closing </body> tag (after the add note modal) -->
+<div id="editNoteModal" class="modal">
+  <div class="modal-content">
+    <span class="close-modal edit-close">&times;</span>
+    <h2>Edit Note</h2>
+    <form method="POST" action="index.php<?php echo $filter !== 'all' ? '?filter=' . $filter : ''; ?>" id="editForm">
+      <input type="hidden" name="action" value="edit">
+      <input type="hidden" name="id" id="edit-id">
+      <div class="form-group">
+        <label for="edit-title">Title</label>
+        <input type="text" name="title" id="edit-title" placeholder="Note Title" required>
+      </div>
+      <div class="form-group">
+        <label for="edit-content">Content</label>
+        <textarea name="content" id="edit-content" placeholder="Note Content" required></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="submit" class="btn-save">Update Note</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<script>
+  // Get modal elements
+  const addNoteModal = document.getElementById('noteModal');
+  const editNoteModal = document.getElementById('editNoteModal');
+  const addNoteBtn = document.getElementById('addNoteBtn');
+  
+  // Get close buttons
+  const closeAddModal = document.querySelector('.close-modal');
+  const closeEditModal = document.querySelector('.edit-close');
+  
+  // Open add note modal
+  addNoteBtn.onclick = function() {
+    addNoteModal.style.display = "block";
+  }
+  
+  // Close add note modal
+  closeAddModal.onclick = function() {
+    addNoteModal.style.display = "none";
+  }
+  
+  // Close edit note modal
+  closeEditModal.onclick = function() {
+    editNoteModal.style.display = "none";
+  }
+  
+  // Close modals when clicking outside
+  window.onclick = function(event) {
+    if (event.target == addNoteModal) {
+      addNoteModal.style.display = "none";
+    } else if (event.target == editNoteModal) {
+      editNoteModal.style.display = "none";
+    }
+  }
+  
+  // Setup edit buttons
+  document.querySelectorAll('.edit-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const id = this.getAttribute('data-id');
+      const title = this.getAttribute('data-title');
+      const content = this.getAttribute('data-content');
+      
+      document.getElementById('edit-id').value = id;
+      document.getElementById('edit-title').value = title;
+      document.getElementById('edit-content').value = content;
+      
+      editNoteModal.style.display = "block";
+    });
+  });
+</script>
+</body>
+</html>

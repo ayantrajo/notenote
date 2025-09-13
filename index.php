@@ -11,8 +11,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $content = $_POST['content'] ?? '';
         if ($title && $content) {
             // ✅ FIXED: Proper insert without duplicate parameter
-            $stmt = $conn->prepare("INSERT INTO notes (title, content, status, date_created, user_id) VALUES (?, ?, ?, NOW(), ?)");
-            $stmt->execute([$title, $content, 'normal', $user_id]);
+            $stmt = $conn->prepare("INSERT INTO notes (title, content, date_created, user_id) VALUES (?, ?, ?, NOW(), ?)");
+            $stmt->execute([$title, $content, $user_id]);
         }
     }
 

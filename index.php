@@ -1,4 +1,7 @@
 <?php
+// ✅ Show all PHP errors (important for debugging white screen issues)
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 require_once 'config.php';
 $user_id = 1; // Default user for now
@@ -10,10 +13,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $title = $_POST['title'] ?? '';
         $content = $_POST['content'] ?? '';
         if ($title && $content) {
+            // ✅ Make sure "status" is a valid ENUM value in your table
             $stmt = $conn->prepare("INSERT INTO notes (title, content, status, date_created, user_id) VALUES (?, ?, 'normal', NOW(), ?)");
-            $stmt->execute([$title, $content, $user_id]);
+            try {
+                $stmt->execute([$title, $content, $user_id]);
+            } catch (PDOException $e) {
+                // ✅ Show exact SQL error if something fails
+                die("Insert failed: " . $e->getMessage());
+            }
         }
     }
+
     // Edit note
     if (isset($_POST['action']) && $_POST['action'] === 'edit') {
         $id = $_POST['id'] ?? '';
@@ -24,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$title, $content, $id, $user_id]);
         }
     }
+
     // Set as favorite
     if (isset($_POST['action']) && $_POST['action'] === 'favorite') {
         $id = $_POST['id'] ?? '';
@@ -32,6 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$id, $user_id]);
         }
     }
+
     // Archive
     if (isset($_POST['action']) && $_POST['action'] === 'archive') {
         $id = $_POST['id'] ?? '';
@@ -40,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$id, $user_id]);
         }
     }
+
     // Delete
     if (isset($_POST['action']) && $_POST['action'] === 'delete') {
         $id = $_POST['id'] ?? '';
@@ -48,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$id, $user_id]);
         }
     }
+
     // Redirect to prevent form resubmission
     header("Location: index.php" . (isset($_GET['filter']) ? "?filter=" . $_GET['filter'] : ""));
     exit;

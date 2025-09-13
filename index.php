@@ -10,21 +10,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $title = $_POST['title'] ?? '';
         $content = $_POST['content'] ?? '';
         if ($title && $content) {
-            $stmt = $conn->prepare("INSERT INTO notes (title, content, status, date_created, user_id) VALUES (?, ?, 'normal', NOW(), ?)");
-            $stmt->execute([$title, $content, $user_id]);
+            // ✅ FIXED: Proper insert without duplicate parameter
+            $stmt = $conn->prepare("INSERT INTO notes (title, content, status, date_created, user_id) VALUES (?, ?, ?, NOW(), ?)");
+            $stmt->execute([$title, $content, 'normal', $user_id]);
         }
     }
+
     // Edit note
-      if (isset($_POST['action']) && $_POST['action'] === 'edit') {
-          $id = $_POST['id'] ?? '';
-          $title = $_POST['title'] ?? '';
-          $content = $_POST['content'] ?? '';
-          
-          if ($id && $title && $content) {
-              $stmt = $conn->prepare("UPDATE notes SET title = ?, content = ? WHERE id = ? AND user_id = ?");
-              $stmt->execute([$title, $content, $id, $user_id]);
-          }
-      }
+    if (isset($_POST['action']) && $_POST['action'] === 'edit') {
+        $id = $_POST['id'] ?? '';
+        $title = $_POST['title'] ?? '';
+        $content = $_POST['content'] ?? '';
+        
+        if ($id && $title && $content) {
+            $stmt = $conn->prepare("UPDATE notes SET title = ?, content = ? WHERE id = ? AND user_id = ?");
+            $stmt->execute([$title, $content, $id, $user_id]);
+        }
+    }
+
     // Set as favorite
     if (isset($_POST['action']) && $_POST['action'] === 'favorite') {
         $id = $_POST['id'] ?? '';
@@ -33,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$id, $user_id]);
         }
     }
+
     // Archive
     if (isset($_POST['action']) && $_POST['action'] === 'archive') {
         $id = $_POST['id'] ?? '';
@@ -41,6 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$id, $user_id]);
         }
     }
+
     // Delete
     if (isset($_POST['action']) && $_POST['action'] === 'delete') {
         $id = $_POST['id'] ?? '';
@@ -49,6 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$id, $user_id]);
         }
     }
+
     // Redirect to prevent form resubmission
     header("Location: index.php" . (isset($_GET['filter']) ? "?filter=" . $_GET['filter'] : ""));
     exit;
@@ -195,100 +201,3 @@ $notes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
     </div>
-          <!-- Add this right before closing </body> tag -->
-<div id="noteModal" class="modal">
-  <div class="modal-content">
-    <span class="close-modal">&times;</span>
-    <h2>Add Note</h2>
-    <form method="POST" action="index.php<?php echo $filter !== 'all' ? '?filter=' . $filter : ''; ?>">
-      <input type="hidden" name="action" value="add">
-      <div class="form-group">
-        <label for="title">Title</label>
-        <input type="text" name="title" id="title" placeholder="Note Title" required>
-      </div>
-      <div class="form-group">
-        <label for="content">Content</label>
-        <textarea name="content" id="content" placeholder="Note Content" required></textarea>
-      </div>
-      <div class="modal-actions">
-        <button type="submit" class="btn-save">Save Note</button>
-      </div>
-    </form>
-  </div>
-</div>        
-  
-<!-- Add this right before closing </body> tag (after the add note modal) -->
-<div id="editNoteModal" class="modal">
-  <div class="modal-content">
-    <span class="close-modal edit-close">&times;</span>
-    <h2>Edit Note</h2>
-    <form method="POST" action="index.php<?php echo $filter !== 'all' ? '?filter=' . $filter : ''; ?>" id="editForm">
-      <input type="hidden" name="action" value="edit">
-      <input type="hidden" name="id" id="edit-id">
-      <div class="form-group">
-        <label for="edit-title">Title</label>
-        <input type="text" name="title" id="edit-title" placeholder="Note Title" required>
-      </div>
-      <div class="form-group">
-        <label for="edit-content">Content</label>
-        <textarea name="content" id="edit-content" placeholder="Note Content" required></textarea>
-      </div>
-      <div class="modal-actions">
-        <button type="submit" class="btn-save">Update Note</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-
-<script>
-  // Get modal elements
-  const addNoteModal = document.getElementById('noteModal');
-  const editNoteModal = document.getElementById('editNoteModal');
-  const addNoteBtn = document.getElementById('addNoteBtn');
-  
-  // Get close buttons
-  const closeAddModal = document.querySelector('.close-modal');
-  const closeEditModal = document.querySelector('.edit-close');
-  
-  // Open add note modal
-  addNoteBtn.onclick = function() {
-    addNoteModal.style.display = "block";
-  }
-  
-  // Close add note modal
-  closeAddModal.onclick = function() {
-    addNoteModal.style.display = "none";
-  }
-  
-  // Close edit note modal
-  closeEditModal.onclick = function() {
-    editNoteModal.style.display = "none";
-  }
-  
-  // Close modals when clicking outside
-  window.onclick = function(event) {
-    if (event.target == addNoteModal) {
-      addNoteModal.style.display = "none";
-    } else if (event.target == editNoteModal) {
-      editNoteModal.style.display = "none";
-    }
-  }
-  
-  // Setup edit buttons
-  document.querySelectorAll('.edit-btn').forEach(button => {
-    button.addEventListener('click', function() {
-      const id = this.getAttribute('data-id');
-      const title = this.getAttribute('data-title');
-      const content = this.getAttribute('data-content');
-      
-      document.getElementById('edit-id').value = id;
-      document.getElementById('edit-title').value = title;
-      document.getElementById('edit-content').value = content;
-      
-      editNoteModal.style.display = "block";
-    });
-  });
-</script>
-</body>
-</html>
